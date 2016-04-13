@@ -1,0 +1,80 @@
+Test cases for testing the new virtio-console functionality that
+exposes multiple ports to guests for generic communication.
+
+Files:
+------
+test-virtserial.c: Standalone test program that can be run in the
+  guest.
+auto-virtserial.c: Runs automated tests. To be run on the host.
+
+auto-virtserial-guest.c: Runs automated tests, to be run on the guest.
+
+run-test.sh: Starts qemu and runs the automated tests
+
+guest-kernel-config: A small config file that only enables a small
+  subset of kernel features and a lot of debug options to test the
+  virtio-console functionality thoroughly for memory leaks, locking
+  correctness, etc.
+
+
+Setup:
+------
+In my guest (f11-auto.qcow2), I've put the auto-virtserial-guest
+program in /etc/init.d/ and put a line in /etc/rc.local to invoke it
+upon boot:
+
+<guest /etc/rc.local>:
+/etc/init.d/auto-virtserial-guest &
+
+When run-test.sh is invoked with such a guest, when the guest comes
+up, the tests start running automatically.
+
+Some settings in the run-test.sh script should be tweaked to match
+your environment (especially the guest image file, qemu location,
+etc.).
+
+To be able to run the virtio console port test successfully without
+selinux denying logins, you should do the following:
+
+<guest /etc/securetty>:
+Add a line saying 'hvc0'
+
+<guest /etc/event.d>:
+Copy tty1 to hvc0, replace all tty1 to hvc0 in the new file
+
+To be able to test the udev symlinking rule,
+
+<guest>
+mount -t debugfs debugfs /sys/kernel/debug
+
+<guest /etc/udev/rules.d>:
+create a new file 90-virtio-ports.rules
+
+and add the following text:
+
+<guest /etc/udev/rules.d/90-virtio-ports.rules>
+KERNEL=="vport*", SYMLINK+="virtio-ports/$attr{name}"
+
+For the file checksumming test, place a (big) file in
+/tmp/amit/big-file on the host
+
+and
+
+/tmp/amit/guest-big-file in the guest.
+
+
+Also, other details are mentioned at:
+
+https://fedoraproject.org/wiki/Features/VirtioSerial
+
+http://www.linux-kvm.org/page/VMchannel_Requirements
+
+These programs are sensitive to some details, like the host program
+(auto-virtserial) has to be started before the guest invokes
+auto-virtserial-guest program.
+
+More work is needed to make these programs fully ready; if you wish
+you contribute, send me an email at <amit.shah@redhat.com>
+
+
+Amit
